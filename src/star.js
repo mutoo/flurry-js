@@ -9,6 +9,7 @@ export class Star {
     this.rotSpeed = 0;
     this.mystery = 0;
     this.ate = false;
+
     this.shader = null;
     this.vertexBuffer = null;
     this.texture = null;
@@ -29,7 +30,7 @@ export class Star {
   initBuffers(gl) {
     // vertices include position(3), color(3) and uv(2)
     const vertices = [];
-    const c = 0.0635;
+    const c = 0.08;
     const spikes = 30;
     for (let k = 0; k < spikes; k++) {
       const size = 3 + Math.random() * 150;
@@ -58,7 +59,6 @@ export class Star {
     this.vertexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
   }
 
   draw(gl, camera) {
