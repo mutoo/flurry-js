@@ -1,12 +1,12 @@
 export const vertexShaderSource = `
 attribute vec3 a_position;
-attribute vec3 a_color;
+attribute vec4 a_color;
 attribute vec2 a_texCoord;
 
 uniform mat4 u_mvpMatrix;
 
 varying vec2 v_texCoord;
-varying vec3 v_color;
+varying vec4 v_color;
 
 void main() {
     gl_Position = u_mvpMatrix * vec4(a_position, 1.0);
@@ -22,11 +22,11 @@ precision mediump float;
 uniform sampler2D u_image;
 
 varying vec2 v_texCoord;
-varying vec3 v_color;
+varying vec4 v_color;
 
 void main() {
-    vec3 texColor = texture2D(u_image, v_texCoord).aaa;
-    gl_FragColor = vec4(texColor * v_color, 1.0);
+    float alpha = texture2D(u_image, v_texCoord).a;
+    gl_FragColor = vec4(1.0, 1.0, 1.0, alpha) * v_color;
 }
 `;
 

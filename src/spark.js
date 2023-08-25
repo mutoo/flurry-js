@@ -149,11 +149,11 @@ export class Spark {
     const colorTime = timeElapsed;
 
     const baseRed =
-      0.109375 * Math.cos((colorTime + redPhaseShift) * colorRot) + 1;
+      0.109375 * (Math.cos((colorTime + redPhaseShift) * colorRot) + 1);
     const baseGreen =
-      0.109375 * Math.cos((colorTime + greenPhaseShift) * colorRot) + 1;
+      0.109375 * (Math.cos((colorTime + greenPhaseShift) * colorRot) + 1);
     const baseBlue =
-      0.109375 * Math.cos((colorTime + bluePhaseShift) * colorRot) + 1;
+      0.109375 * (Math.cos((colorTime + bluePhaseShift) * colorRot) + 1);
 
     for (let i = 0; i < 3; i++) {
       old[i] = this.position[i];
