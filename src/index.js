@@ -60,6 +60,7 @@ window.addEventListener(
   function () {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    gl.viewport(0, 0, canvas.width, canvas.height);
   },
   false
 );
