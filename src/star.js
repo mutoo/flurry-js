@@ -1,14 +1,21 @@
-import { random } from './utils.js';
-import { MAX_ANGLES, BIG_MYSTERY, SERAPH_DISTANCE } from './constant.js';
-import { create as mat4, fromRotation, multiply, fromTranslation } from './lib/gl-matrix/mat4.js';
-import { fromValues as v3, transformMat4 } from './lib/gl-matrix/vec3.js';
+import {random} from "./utils.js";
+import {MAX_ANGLES, BIG_MYSTERY} from "./constant.js";
+import {
+  create as mat4,
+  fromRotation,
+  fromXRotation,
+  fromYRotation,
+  fromZRotation,
+  multiply,
+  fromTranslation,
+} from "./lib/gl-matrix/mat4.js";
+import {fromValues as v3, transformMat4} from "./lib/gl-matrix/vec3.js";
 
 export class Star {
   constructor() {
     this.position = [0, 0, 0];
     this.rotSpeed = 0;
     this.mystery = 0;
-    this.ate = false;
 
     this.shader = null;
     this.vertexBuffer = null;
@@ -17,7 +24,7 @@ export class Star {
 
   init(gl, shader, texture) {
     for (let i = 0; i < 3; i++) {
-      this.position[i] = random(-10000.0, 10000.0);
+      this.position[i] = random(-100.0, 100.0);
     }
     this.rotSpeed = random(0.4, 0.9);
     this.mystery = random(0.0, 10.0);
@@ -38,7 +45,7 @@ export class Star {
       const p1 = v3(0, size, 0);
       const p2 = v3(3.0, 0, 0);
       const rotMat = mat4();
-      const a = Math.random() * 360 * Math.PI / 180;
+      const a = (Math.random() * 360 * Math.PI) / 180;
       fromRotation(rotMat, a, [0, 0, 1]);
       const rP0 = v3(0, 0, 0);
       const rP1 = v3(0, 0, 0);
@@ -50,9 +57,30 @@ export class Star {
       const g = random(0.125, 1);
       const b = random(0.125, 1);
       vertices.push(
-        rP0[0], rP0[1], rP0[2], r, g, b, 0, 0,
-        rP1[0], rP1[1], rP1[2], r, g, b, 0.5, 1,
-        rP2[0], rP2[1], rP2[2], r, g, b, 1, 0,
+        rP0[0],
+        rP0[1],
+        rP0[2],
+        r,
+        g,
+        b,
+        0,
+        0,
+        rP1[0],
+        rP1[1],
+        rP1[2],
+        r,
+        g,
+        b,
+        0.5,
+        1,
+        rP2[0],
+        rP2[1],
+        rP2[2],
+        r,
+        g,
+        b,
+        1,
+        0
       );
     }
 
@@ -72,11 +100,7 @@ export class Star {
     multiply(mvpMatrix, camera.projection, mvMatrix);
 
     // apply mvp matrix
-    gl.uniformMatrix4fv(
-      this.shader.uniforms.mvpMatrix,
-      false,
-      mvpMatrix,
-    );
+    gl.uniformMatrix4fv(this.shader.uniforms.mvpMatrix, false, mvpMatrix);
 
     // apply texture
     gl.activeTexture(gl.TEXTURE0);
@@ -90,7 +114,7 @@ export class Star {
       gl.FLOAT,
       false,
       Float32Array.BYTES_PER_ELEMENT * 8,
-      0,
+      0
     );
     gl.vertexAttribPointer(
       this.shader.attribs.color,
@@ -98,7 +122,7 @@ export class Star {
       gl.FLOAT,
       false,
       Float32Array.BYTES_PER_ELEMENT * 8,
-      Float32Array.BYTES_PER_ELEMENT * 3,
+      Float32Array.BYTES_PER_ELEMENT * 3
     );
     gl.vertexAttribPointer(
       this.shader.attribs.texCoord,
@@ -106,7 +130,7 @@ export class Star {
       gl.FLOAT,
       false,
       Float32Array.BYTES_PER_ELEMENT * 8,
-      Float32Array.BYTES_PER_ELEMENT * 6,
+      Float32Array.BYTES_PER_ELEMENT * 6
     );
     gl.enableVertexAttribArray(this.shader.attribs.position);
     gl.enableVertexAttribArray(this.shader.attribs.color);
@@ -125,53 +149,28 @@ export class Star {
       6.0 +
       0.75;
     const thisPointInRadians = (2.0 * Math.PI * this.mystery) / BIG_MYSTERY;
-    let tmpX1,
-      tmpY1,
-      tmpZ1,
-      tmpX2,
-      tmpY2,
-      tmpZ2,
-      tmpX3,
-      tmpY3,
-      tmpZ3,
-      tmpX4,
-      tmpY4,
-      tmpZ4;
-    let rotation, cr, sr;
 
-    this.ate = false;
+    const x0 =
+      250 * cf * Math.cos(11.0 * (thisPointInRadians + 3.0 * thisAngle));
+    const y0 =
+      250 * cf * Math.sin(12.0 * (thisPointInRadians + 4.0 * thisAngle));
+    const z0 = 250 * Math.cos(23.0 * (thisPointInRadians + 12.0 * thisAngle));
 
-    this.position[0] =
-      250.0 * cf * Math.cos(11.0 * (thisPointInRadians + 3.0 * thisAngle));
-    this.position[1] =
-      250.0 * cf * Math.sin(12.0 * (thisPointInRadians + 4.0 * thisAngle));
-    this.position[2] =
-      250.0 * Math.cos(23.0 * (thisPointInRadians + 12.0 * thisAngle));
+    const rotation0 = thisAngle * 0.501 + (5.01 * this.mystery) / BIG_MYSTERY;
+    const rotation1 = thisAngle * 2.501 + (85.01 * this.mystery) / BIG_MYSTERY;
+    const rotZ0 = fromZRotation(mat4(), rotation0);
+    const rotY0 = fromYRotation(mat4(), rotation0);
+    const rotX0 = fromXRotation(mat4(), rotation0);
+    const rotZ1 = fromZRotation(mat4(), rotation1);
+    const rotAll = mat4();
+    multiply(rotAll, rotZ0, rotY0);
+    multiply(rotAll, rotAll, rotX0);
+    multiply(rotAll, rotAll, rotZ1);
+    const v0 = v3(x0, y0, z0);
+    transformMat4(v0, v0, rotAll);
 
-    rotation = thisAngle * 0.501 + (5.01 * this.mystery) / BIG_MYSTERY;
-    cr = Math.cos(rotation);
-    sr = Math.sin(rotation);
-    tmpX1 = this.position[0] * cr - this.position[1] * sr;
-    tmpY1 = this.position[1] * cr + this.position[0] * sr;
-    tmpZ1 = this.position[2];
-
-    tmpX2 = tmpX1 * cr - tmpZ1 * sr;
-    tmpY2 = tmpY1;
-    tmpZ2 = tmpZ1 * cr + tmpX1 * sr;
-
-    tmpX3 = tmpX2;
-    tmpY3 = tmpY2 * cr - tmpZ2 * sr;
-    tmpZ3 = tmpZ2 * cr + tmpY2 * sr + SERAPH_DISTANCE;
-
-    rotation = thisAngle * 2.501 + (85.01 * this.mystery) / BIG_MYSTERY;
-    cr = Math.cos(rotation);
-    sr = Math.sin(rotation);
-    tmpX4 = tmpX3 * cr - tmpY3 * sr;
-    tmpY4 = tmpY3 * cr + tmpX3 * sr;
-    tmpZ4 = tmpZ3;
-
-    this.position[0] = tmpX4;
-    this.position[1] = tmpY4;
-    this.position[2] = tmpZ4;
+    this.position[0] = v0[0];
+    this.position[1] = v0[1];
+    this.position[2] = v0[2];
   }
 }

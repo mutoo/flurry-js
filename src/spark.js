@@ -1,12 +1,15 @@
-import { MAX_ANGLES, SERAPH_DISTANCE, BIG_MYSTERY } from "./constant.js";
-import { random } from "./utils.js";
+import {MAX_ANGLES, BIG_MYSTERY} from "./constant.js";
+import {random} from "./utils.js";
 import {
   create as mat4,
   fromRotation,
+  fromXRotation,
+  fromYRotation,
+  fromZRotation,
   multiply,
   fromTranslation,
 } from "./lib/gl-matrix/mat4.js";
-import { fromValues as v3, transformMat4 } from "./lib/gl-matrix/vec3.js";
+import {fromValues as v3, transformMat4} from "./lib/gl-matrix/vec3.js";
 
 const fieldSpeed = 12;
 const fieldRange = 1000.0;
@@ -15,7 +18,6 @@ const fieldCoherence = 0;
 export class Spark {
   constructor(mystery) {
     this.position = [0.0, 0.0, 0.0];
-    this.delta = [0.0, 0.0, 0.0];
     this.color = [0.0, 0.0, 0.0, 0.0];
     this.mystery = mystery;
 
@@ -138,9 +140,7 @@ export class Spark {
   update(dt, timeElapsed) {
     const rotationsPerSecond = (2.0 * Math.PI * fieldSpeed) / MAX_ANGLES;
     const thisAngle = timeElapsed * rotationsPerSecond;
-    const cycleTime = 1.5; // rainbow mode
-
-    const old = new Float32Array(3);
+    const cycleTime = 20; // rainbow mode
 
     const colorRot = (2.0 * Math.PI) / cycleTime;
     const redPhaseShift = 0.0;
@@ -155,64 +155,48 @@ export class Spark {
     const baseBlue =
       0.109375 * (Math.cos((colorTime + bluePhaseShift) * colorRot) + 1);
 
-    for (let i = 0; i < 3; i++) {
-      old[i] = this.position[i];
-    }
-
     const cf =
       (Math.cos(7.0 * (timeElapsed * rotationsPerSecond)) +
         Math.cos(3.0 * (timeElapsed * rotationsPerSecond)) +
         Math.cos(13.0 * (timeElapsed * rotationsPerSecond))) /
-        6.0 +
+      6.0 +
       2.0;
     const thisPointInRadians = (2.0 * Math.PI * this.mystery) / BIG_MYSTERY;
 
     this.color[0] =
       baseRed +
       0.0625 *
-        (0.5 +
-          Math.cos(15.0 * (thisPointInRadians + 3.0 * thisAngle)) +
-          Math.sin(7.0 * (thisPointInRadians + thisAngle)));
+      (0.5 +
+        Math.cos(15.0 * (thisPointInRadians + 3.0 * thisAngle)) +
+        Math.sin(7.0 * (thisPointInRadians + thisAngle)));
     this.color[1] =
       baseGreen + 0.0625 * (0.5 + Math.sin(thisPointInRadians + thisAngle));
     this.color[2] =
       baseBlue +
       0.0625 * (0.5 + Math.cos(37.0 * (thisPointInRadians + thisAngle)));
-    this.position[0] =
+
+    const x0 =
       fieldRange * cf * Math.cos(11.0 * (thisPointInRadians + 3.0 * thisAngle));
-    this.position[1] =
+    const y0 =
       fieldRange * cf * Math.sin(12.0 * (thisPointInRadians + 4.0 * thisAngle));
-    this.position[2] =
+    const z0 =
       fieldRange * Math.cos(23.0 * (thisPointInRadians + 12.0 * thisAngle));
 
-    let rotation = thisAngle * 0.501 + (5.01 * this.mystery) / BIG_MYSTERY;
-    let cr = Math.cos(rotation);
-    let sr = Math.sin(rotation);
-    const tmpX1 = this.position[0] * cr - this.position[1] * sr;
-    const tmpY1 = this.position[1] * cr + this.position[0] * sr;
-    const tmpZ1 = this.position[2];
+    const rotation0 = thisAngle * 0.501 + (5.01 * this.mystery) / BIG_MYSTERY;
+    const rotation1 = thisAngle * 2.501 + (85.01 * this.mystery) / BIG_MYSTERY;
+    const rotZ0 = fromZRotation(mat4(), rotation0);
+    const rotY0 = fromYRotation(mat4(), rotation0);
+    const rotX0 = fromXRotation(mat4(), rotation0);
+    const rotZ1 = fromZRotation(mat4(), rotation1);
+    const rotAll = mat4();
+    multiply(rotAll, rotZ0, rotY0);
+    multiply(rotAll, rotAll, rotX0);
+    multiply(rotAll, rotAll, rotZ1);
+    const tmpV0 = v3(x0, y0, z0);
+    transformMat4(tmpV0, tmpV0, rotAll);
 
-    const tmpX2 = tmpX1 * cr - tmpZ1 * sr;
-    const tmpY2 = tmpY1;
-    const tmpZ2 = tmpZ1 * cr + tmpX1 * sr;
-
-    const tmpX3 = tmpX2;
-    const tmpY3 = tmpY2 * cr - tmpZ2 * sr;
-    const tmpZ3 = tmpZ2 * cr + tmpY2 * sr + SERAPH_DISTANCE;
-
-    rotation = thisAngle * 2.501 + (85.01 * this.mystery) / BIG_MYSTERY;
-    cr = Math.cos(rotation);
-    sr = Math.sin(rotation);
-    let tmpX4 = tmpX3 * cr - tmpY3 * sr;
-    let tmpY4 = tmpY3 * cr + tmpX3 * sr;
-    let tmpZ4 = tmpZ3;
-
-    this.position[0] = tmpX4;
-    this.position[1] = tmpY4;
-    this.position[2] = tmpZ4;
-
-    for (let i = 0; i < 3; i++) {
-      this.delta[i] = (this.position[i] - old[i]) / dt;
-    }
+    this.position[0] = tmpV0[0];
+    this.position[1] = tmpV0[1];
+    this.position[2] = tmpV0[2];
   }
 }

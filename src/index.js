@@ -1,9 +1,9 @@
-import { createTexture } from "./texture.js";
-import { createShaderProgram } from "./shader.js";
-import { create as mat4, ortho, lookAt } from "./lib/gl-matrix/mat4.js";
-import { Star } from "./star.js";
-import { Spark } from "./spark.js";
-import { Smoke } from "./smoke.js";
+import {createTexture} from "./texture.js";
+import {createShaderProgram} from "./shader.js";
+import {create as mat4, ortho, lookAt} from "./lib/gl-matrix/mat4.js";
+import {Star} from "./star.js";
+import {Spark} from "./spark.js";
+import {Smoke} from "./smoke.js";
 
 const canvas = document.createElement("canvas");
 canvas.width = window.innerWidth;
@@ -48,18 +48,23 @@ smoke.init(gl, shader, texture);
 function update(dt, timeElapsed) {
   star.update(dt, timeElapsed);
   sparks.forEach((spark) => spark.update(dt, timeElapsed));
+  smoke.drag = Math.pow(0.9965, dt * 85);
   smoke.update(dt, timeElapsed);
 }
 
 function render(gl) {
+  camera.width = canvas.width;
+  camera.height = canvas.height;
+
   // clear the screen
   gl.clearColor(0.0, 0.0, 0.0, 1);
-  
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
   // enable blending
   gl.enable(gl.BLEND);
   gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-  
-  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // draw scene
   star.draw(gl, camera);
   sparks.forEach((spark) => spark.draw(gl, camera));
   smoke.draw(gl, camera);
@@ -67,6 +72,7 @@ function render(gl) {
 
 let lastTime = 0;
 let timeElapsed = 0;
+
 function main() {
   const now = Date.now();
   const dt = (now - lastTime) / 1000.0;

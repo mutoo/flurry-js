@@ -407,7 +407,7 @@ export function determinant(a) {
  * Multiplies two mat4s
  *
  * @param {mat4} out the receiving matrix
- * @param {ReadonlyMat4} a the first operand
+ * @param {mat4} a the first operand
  * @param {ReadonlyMat4} b the second operand
  * @returns {mat4} out
  */

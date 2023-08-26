@@ -1,33 +1,28 @@
-import { SERAPH_DISTANCE, BIG_MYSTERY } from "./constant.js";
-import { random, randomBell } from "./utils.js";
+import {fastDist2D, random, randomBell} from "./utils.js";
 import {
   create as mat4,
-  fromRotation,
   multiply,
-  fromTranslation,
 } from "./lib/gl-matrix/mat4.js";
-import { fromValues as v3, transformMat4 } from "./lib/gl-matrix/vec3.js";
 
 const NUM_SMOKE_PARTICLES = 3600;
-const MAX_ANGLES = 16384;
-const NOT_QUITE_DEAD = 3;
-const intensity = 75000.0;
 const incohesion = 0.07;
 const streamSpeed = 450.0;
 const streamSize = 25000;
 const colorIncoherence = 0.15;
-const streamExpansion = 200;
+const streamExpansion = 8000;
 const gravity = 1500000.0;
+
 export class SmokeParticle {
   constructor() {
     this.color = [0.0, 0.0, 0.0, 0.0];
     this.position = [0.0, 0.0, 0.0];
     this.oldPosition = [0.0, 0.0, 0.0];
     this.delta = [0.0, 0.0, 0.0];
-    this.mystery = 0.0;
     this.dead = false;
-    this.time = 0;
+    this.startTime = 0;
+    this.liveTime = 0;
     this.animFrame = 0;
+
   }
 }
 
@@ -128,43 +123,68 @@ export class Smoke {
   prepareBufferData(gl, camera) {
     // vertices include position(3), color(4) and uv(2)
     const vertices = [];
+
+    const width = (streamSize + 2.5 * streamExpansion) * camera.width / camera.height;
+
     let count = 0;
     for (let i = 0; i < NUM_SMOKE_PARTICLES; i += 4) {
       for (let k = 0; k < 4; k++) {
-        if (this.p[i + k].dead) {
+        const p = this.p[i + k];
+        if (p.dead) {
           continue;
         }
+        const pWidth = (streamSize + p.liveTime * streamExpansion) * camera.width / camera.height;
+        if (pWidth > width) {
+          p.dead = true;
+          continue;
+        }
+        const x = p.position[0];
+        const y = p.position[1];
+        const z = p.position[2];
+        const dx = p.delta[0];
+        const dy = p.delta[1];
+        const rdx = -dy;
+        const rdy = dx;
+        const dist = fastDist2D(dx, dy);
+        const w = Math.max(1, pWidth / (z + 2000));
+        const scale = !dist ? 0 : (w / dist);
+        const dxs = dx * scale * 2;
+        const dys = dy * scale * 2;
+        const rdxs = rdx * scale / 2;
+        const rdys = rdy * scale / 2;
+        const rdxos = rdx * scale / 3;
+        const rdyos = rdy * scale / 3;
 
-        const size = 10;
-        const x = this.p[i + k].position[0];
-        const y = this.p[i + k].position[1];
-        const z = this.p[i + k].position[2];
-        const x0 = x - size;
-        const y0 = y - size;
+        const x0 = x + dxs + rdxs;
+        const y0 = y + dys + rdys;
         const z0 = z;
-        const x1 = x - size;
-        const y1 = y + size;
+        const x1 = x + dxs - rdxs;
+        const y1 = y + dys - rdys;
         const z1 = z;
-        const x2 = x + size;
-        const y2 = y - size;
+        const x2 = x - dxs + rdxos;
+        const y2 = y - dys + rdyos;
         const z2 = z;
-        const x3 = x + size;
-        const y3 = y + size;
+        const x3 = x - dxs - rdxos;
+        const y3 = y - dys - rdyos;
         const z3 = z;
 
-        const color = this.p[i + k].color;
-        const animFrame = this.p[i + k].animFrame;
+        const cm = 1.375 - pWidth / width;
+        const c0 = p.color[0] * cm;
+        const c1 = p.color[1] * cm;
+        const c2 = p.color[2] * cm;
+        const c3 = p.color[3] * cm;
+        const animFrame = p.animFrame;
         const u0 = (animFrame & 7) / 8;
         const v0 = (animFrame >> 3) / 8;
         const u1 = u0 + 1 / 8;
         const v1 = v0 + 1 / 8;
 
-        vertices.push(x0, y0, z0, ...color, u0, v0);
-        vertices.push(x1, y1, z1, ...color, u0, v1);
-        vertices.push(x2, y2, z2, ...color, u1, v0);
-        vertices.push(x2, y2, z2, ...color, u1, v0);
-        vertices.push(x1, y1, z1, ...color, u0, v1);
-        vertices.push(x3, y3, z3, ...color, u1, v1);
+        vertices.push(x0, y0, z0, c0, c1, c2, c3, u0, v0);
+        vertices.push(x1, y1, z1, c0, c1, c2, c3, u0, v1);
+        vertices.push(x2, y2, z2, c0, c1, c2, c3, u1, v0);
+        vertices.push(x2, y2, z2, c0, c1, c2, c3, u1, v0);
+        vertices.push(x1, y1, z1, c0, c1, c2, c3, u0, v1);
+        vertices.push(x3, y3, z3, c0, c1, c2, c3, u1, v1);
         count += 6;
       }
     }
@@ -183,7 +203,7 @@ export class Smoke {
     this.frame++;
 
     if (!this.firstTime) {
-      if (timeElapsed - this.lastParticleTime >= 1.0 / 121.0) {
+      while (timeElapsed - this.lastParticleTime >= 1.0 / 121.0) {
         let dx, dy, dz, deltax, deltay, deltaz;
         let f;
         let rsquared;
@@ -229,7 +249,7 @@ export class Smoke {
             this.sparks[i].color[2] * (1 + randomBell(colorIncoherence));
           this.p[this.n + this.sub].color[3] =
             0.85 * (1 + randomBell(colorIncoherence));
-          this.p[this.n + this.sub].time = timeElapsed;
+          this.p[this.n + this.sub].startTime = timeElapsed;
           this.p[this.n + this.sub].dead = false;
           this.p[this.n + this.sub].animFrame = Math.floor(Math.random() * 64);
 
@@ -244,7 +264,7 @@ export class Smoke {
           }
         }
 
-        this.lastParticleTime = timeElapsed;
+        this.lastParticleTime += 1 / 121;
       }
     } else {
       this.lastParticleTime = timeElapsed;
@@ -260,6 +280,7 @@ export class Smoke {
 
     for (i = 0; i < NUM_SMOKE_PARTICLES; i += 4) {
       for (k = 0; k < 4; k++) {
+        const p = this.p[i + k];
         let dx, dy, dz;
         let f;
         let rsquared;
@@ -268,18 +289,18 @@ export class Smoke {
         let deltay;
         let deltaz;
 
-        if (this.p[i + k].dead) {
+        if (p.dead) {
           continue;
         }
 
-        deltax = this.p[i + k].delta[0];
-        deltay = this.p[i + k].delta[1];
-        deltaz = this.p[i + k].delta[2];
+        deltax = p.delta[0];
+        deltay = p.delta[1];
+        deltaz = p.delta[2];
 
         for (j = 0; j < this.numStreams; j++) {
-          dx = this.p[i + k].position[0] - this.sparks[j].position[0];
-          dy = this.p[i + k].position[1] - this.sparks[j].position[1];
-          dz = this.p[i + k].position[2] - this.sparks[j].position[2];
+          dx = p.position[0] - this.sparks[j].position[0];
+          dy = p.position[1] - this.sparks[j].position[1];
+          dz = p.position[2] - this.sparks[j].position[2];
           rsquared = dx * dx + dy * dy + dz * dz;
 
           f = (gravity / rsquared) * frameRateModifier;
@@ -289,30 +310,30 @@ export class Smoke {
           deltay -= dy * mag;
           deltaz -= dz * mag;
         }
-
         // slow this particle down by drag
         deltax *= this.drag;
         deltay *= this.drag;
         deltaz *= this.drag;
 
         if (deltax * deltax + deltay * deltay + deltaz * deltaz >= 25000000.0) {
-          this.p[i + k].dead = true;
+          p.dead = true;
           continue;
         }
-
         // update the position
-        this.p[i + k].delta[0] = deltax;
-        this.p[i + k].delta[1] = deltay;
-        this.p[i + k].delta[2] = deltaz;
+        p.delta[0] = deltax;
+        p.delta[1] = deltay;
+        p.delta[2] = deltaz;
         for (j = 0; j < 3; j++) {
-          this.p[i + k].oldPosition[j] = this.p[i + k].position[j];
-          this.p[i + k].position[j] += this.p[i + k].delta[j] * dt;
+          p.oldPosition[j] = p.position[j];
+          p.position[j] += p.delta[j] * dt;
         }
         // update animation frame
-        this.p[i + k].animFrame++;
-        if (this.p[i + k].animFrame >= 64) {
-          this.p[i + k].animFrame = 0;
+        p.animFrame++;
+        if (p.animFrame >= 64) {
+          p.animFrame = 0;
         }
+        // update live time
+        p.liveTime = timeElapsed - p.startTime;
       }
     }
   }
