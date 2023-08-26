@@ -2,5 +2,11 @@
   "name": "flurry-js",
   "version": "1.0.0",
   "main": "index.js",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "rollup": "^3.28.1"
+  },
+  "scripts": {
+    "build": "rollup src/index.js --file flurry.js --format iife"
+  }
 }
