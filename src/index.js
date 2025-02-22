@@ -25,8 +25,6 @@ const shader = createShaderProgram(gl);
 
 // setup camera
 const projection = mat4();
-// ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
-perspective(projection, 45, canvas.width / canvas.height, 0.1, 10000);
 const eye = v3(0, 0, 1000);
 const target = v3(0, 0, 0);
 const up = v3(0, 1, 0);
@@ -65,14 +63,7 @@ const gui = new dat.GUI({ name: "flurry-js" });
 gui.add(params, "streams", 1, 12, 1);
 gui.add(params, "displayStar");
 gui.add(params, "displaySparks");
-gui.add(params, "useOrtho").onChange(() => {
-  // 切换投影方式
-  if (params.useOrtho) {
-    ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
-  } else {
-    perspective(projection, 45, canvas.width / canvas.height, 0.1, 10000);
-  }
-});
+gui.add(params, "useOrtho").onChange(updateProjection);
 
 // github links
 const linksFolder = gui.addFolder("Links");
@@ -81,17 +72,24 @@ linksFolder.add(
   "github"
 );
 
+function updateProjection() {
+  const aspect = canvas.width / canvas.height;
+  if (params.useOrtho) {
+    const orthoHeight = 1000;
+    const orthoWidth = orthoHeight * aspect;
+    ortho(projection, -orthoWidth, orthoWidth, -orthoHeight, orthoHeight, -2000, 2000);
+  } else {
+    perspective(projection, 45, aspect, 0.1, 10000);
+  }
+}
+
 window.addEventListener(
   "resize",
   function () {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     gl.viewport(0, 0, canvas.width, canvas.height);
-    if (params.useOrtho) {
-      ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
-    } else {
-      perspective(projection, 45, canvas.width / canvas.height, 0.1, 10000);
-    }
+    updateProjection();
   },
   false
 );
@@ -141,4 +139,5 @@ function main() {
   requestAnimationFrame(main);
 }
 
+updateProjection();
 main();
