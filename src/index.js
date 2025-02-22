@@ -1,7 +1,8 @@
 import * as dat from "./lib/dat.gui/dat.gui.module.js";
 import { createTexture } from "./texture.js";
 import { createShaderProgram } from "./shader.js";
-import { create as mat4, ortho, lookAt } from "./lib/gl-matrix/mat4.js";
+import { create as mat4, ortho, perspective, lookAt } from "./lib/gl-matrix/mat4.js";
+import { fromValues as v3 } from "./lib/gl-matrix/vec3.js";
 import { Star } from "./star.js";
 import { Spark } from "./spark.js";
 import { Smoke } from "./smoke.js";
@@ -19,9 +20,13 @@ const shader = createShaderProgram(gl);
 
 // setup camera
 const projection = mat4();
-ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
+// ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
+perspective(projection, 45, canvas.width / canvas.height, 0.1, 10000);
+const eye = v3(0, 0, 1000);
+const target = v3(0, 0, 0);
+const up = v3(0, 1, 0);
 const view = mat4();
-lookAt(view, [0, 0, 1000], [0, 0, 0], [0, 1, 0]);
+lookAt(view, eye, target, up);
 const camera = {
   projection,
   view,
@@ -53,7 +58,10 @@ gui.add(params, "displaySparks");
 
 // github links
 const linksFolder = gui.addFolder("Links");
-linksFolder.add({ github: () => window.open("https://github.com/mutoo/flurry-js") }, "github");
+linksFolder.add(
+  { github: () => window.open("https://github.com/mutoo/flurry-js") },
+  "github"
+);
 
 window.addEventListener(
   "resize",
@@ -95,7 +103,7 @@ function render(gl) {
   smoke.draw(gl, camera);
 }
 
-let lastTime = 0;
+let lastTime = Date.now();
 let timeElapsed = 0;
 
 function main() {

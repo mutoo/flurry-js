@@ -1,8 +1,11 @@
-import {fastDist2D, random, randomBell} from "./utils.js";
+import { random, randomBell, statsLog } from "./utils.js";
+import { create as mat4, multiply, invert } from "./lib/gl-matrix/mat4.js";
 import {
-  create as mat4,
-  multiply,
-} from "./lib/gl-matrix/mat4.js";
+  fromValues as v3,
+  scaleAndAdd,
+  transformMat4,
+  normalize,
+} from "./lib/gl-matrix/vec3.js";
 
 const NUM_SMOKE_PARTICLES = 3600;
 const incohesion = 0.07;
@@ -22,7 +25,6 @@ export class SmokeParticle {
     this.startTime = 0;
     this.liveTime = 0;
     this.animFrame = 0;
-
   }
 }
 
@@ -138,35 +140,59 @@ export class Smoke {
           p.dead = true;
           continue;
         }
-        const x = p.position[0];
-        const y = p.position[1];
-        const z = p.position[2];
+
+        // Calculate velocity and size
         const dx = p.delta[0];
         const dy = p.delta[1];
-        const rdx = -dy;
-        const rdy = dx;
-        const dist = fastDist2D(dx, dy);
-        const w = Math.max(1, pWidth / (z + 2000));
-        const scale = !dist ? 0 : (w / dist);
-        const dxs = dx * scale * 2;
-        const dys = dy * scale * 2;
-        const rdxs = rdx * scale / 2;
-        const rdys = rdy * scale / 2;
-        const rdxos = rdx * scale / 3;
-        const rdyos = rdy * scale / 3;
+        const dz = p.delta[2];
+        const dist3d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const size = 20 + dist3d / 50;
 
-        const x0 = x + dxs + rdxs;
-        const y0 = y + dys + rdys;
-        const z0 = z;
-        const x1 = x + dxs - rdxs;
-        const y1 = y + dys - rdys;
-        const z1 = z;
-        const x2 = x - dxs + rdxos;
-        const y2 = y - dys + rdyos;
-        const z2 = z;
-        const x3 = x - dxs - rdxos;
-        const y3 = y - dys - rdyos;
-        const z3 = z;
+        // Transform current position to camera space
+        const posInCamera = [0, 0, 0];
+        transformMat4(posInCamera, p.position, camera.view);
+
+        // Calculate velocity direction in camera space
+        const velocityInCamera = [0, 0, 0];
+        transformMat4(velocityInCamera, [dx, dy, dz], camera.view);
+        // in the camera space, we only care about the x and y velocity
+        velocityInCamera[2] = 0;
+        normalize(velocityInCamera, velocityInCamera);
+
+        // Calculate right vector (perpendicular to velocity in camera space)
+        const rightDir = [-velocityInCamera[1], velocityInCamera[0], 0];
+        normalize(rightDir, rightDir);
+
+        // Calculate quad vertices in camera space
+        const stretchFactor = 4; // Adjust this factor to control tail length
+        const p0 = [
+          posInCamera[0] + velocityInCamera[0] * size,
+          posInCamera[1] + velocityInCamera[1] * size,
+          posInCamera[2] + velocityInCamera[2] * size,
+        ];
+        const p1 = [
+          posInCamera[0] + rightDir[0] * size,
+          posInCamera[1] + rightDir[1] * size,
+          posInCamera[2] + rightDir[2] * size,
+        ];
+        const p2 = [
+          posInCamera[0] - rightDir[0] * size,
+          posInCamera[1] - rightDir[1] * size,
+          posInCamera[2] - rightDir[2] * size,
+        ];
+        const p3 = [
+          posInCamera[0] - velocityInCamera[0] * size * stretchFactor,
+          posInCamera[1] - velocityInCamera[1] * size * stretchFactor,
+          posInCamera[2] - velocityInCamera[2] * size * stretchFactor,
+        ];
+
+        // Transform vertices back to world space
+        const invView = mat4();
+        invert(invView, camera.view);
+        transformMat4(p0, p0, invView);
+        transformMat4(p1, p1, invView);
+        transformMat4(p2, p2, invView);
+        transformMat4(p3, p3, invView);
 
         const cm = 1.375 - pWidth / width;
         const c0 = p.color[0] * cm;
@@ -179,12 +205,12 @@ export class Smoke {
         const u1 = u0 + 1 / 8;
         const v1 = v0 + 1 / 8;
 
-        vertices.push(x0, y0, z0, c0, c1, c2, c3, u0, v0);
-        vertices.push(x1, y1, z1, c0, c1, c2, c3, u0, v1);
-        vertices.push(x2, y2, z2, c0, c1, c2, c3, u1, v0);
-        vertices.push(x2, y2, z2, c0, c1, c2, c3, u1, v0);
-        vertices.push(x1, y1, z1, c0, c1, c2, c3, u0, v1);
-        vertices.push(x3, y3, z3, c0, c1, c2, c3, u1, v1);
+        vertices.push(p0[0], p0[1], p0[2], c0, c1, c2, c3, u0, v0);
+        vertices.push(p1[0], p1[1], p1[2], c0, c1, c2, c3, u0, v1);
+        vertices.push(p2[0], p2[1], p2[2], c0, c1, c2, c3, u1, v0);
+        vertices.push(p2[0], p2[1], p2[2], c0, c1, c2, c3, u1, v0);
+        vertices.push(p1[0], p1[1], p1[2], c0, c1, c2, c3, u0, v1);
+        vertices.push(p3[0], p3[1], p3[2], c0, c1, c2, c3, u1, v1);
         count += 6;
       }
     }
@@ -327,6 +353,10 @@ export class Smoke {
           p.oldPosition[j] = p.position[j];
           p.position[j] += p.delta[j] * dt;
         }
+        // statsLog("smoke.pos.x", p.position[0]);
+        // statsLog("smoke.pos.y", p.position[1]);
+        // statsLog("smoke.pos.z", p.position[2]);
+
         // update animation frame
         p.animFrame++;
         if (p.animFrame >= 64) {
@@ -336,5 +366,7 @@ export class Smoke {
         p.liveTime = timeElapsed - p.startTime;
       }
     }
+
+    // statsLog("dt", dt);
   }
 }

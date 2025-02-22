@@ -1,5 +1,5 @@
-import {MAX_ANGLES, BIG_MYSTERY} from "./constant.js";
-import {random} from "./utils.js";
+import { MAX_ANGLES, BIG_MYSTERY } from "./constant.js";
+import { random, statsLog } from "./utils.js";
 import {
   create as mat4,
   fromRotation,
@@ -9,7 +9,7 @@ import {
   multiply,
   fromTranslation,
 } from "./lib/gl-matrix/mat4.js";
-import {fromValues as v3, transformMat4} from "./lib/gl-matrix/vec3.js";
+import { fromValues as v3, transformMat4 } from "./lib/gl-matrix/vec3.js";
 
 const fieldSpeed = 12;
 const fieldRange = 1000.0;
@@ -159,16 +159,16 @@ export class Spark {
       (Math.cos(7.0 * (timeElapsed * rotationsPerSecond)) +
         Math.cos(3.0 * (timeElapsed * rotationsPerSecond)) +
         Math.cos(13.0 * (timeElapsed * rotationsPerSecond))) /
-      6.0 +
+        6.0 +
       2.0;
     const thisPointInRadians = (2.0 * Math.PI * this.mystery) / BIG_MYSTERY;
 
     this.color[0] =
       baseRed +
       0.0625 *
-      (0.5 +
-        Math.cos(15.0 * (thisPointInRadians + 3.0 * thisAngle)) +
-        Math.sin(7.0 * (thisPointInRadians + thisAngle)));
+        (0.5 +
+          Math.cos(15.0 * (thisPointInRadians + 3.0 * thisAngle)) +
+          Math.sin(7.0 * (thisPointInRadians + thisAngle)));
     this.color[1] =
       baseGreen + 0.0625 * (0.5 + Math.sin(thisPointInRadians + thisAngle));
     this.color[2] =
@@ -198,5 +198,9 @@ export class Spark {
     this.position[0] = tmpV0[0];
     this.position[1] = tmpV0[1];
     this.position[2] = tmpV0[2];
+
+    // statsLog("spark.pos.x", this.position[0]);
+    // statsLog("spark.pos.y", this.position[1]);
+    // statsLog("spark.pos.z", this.position[2]);
   }
 }

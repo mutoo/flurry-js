@@ -1,5 +1,5 @@
-import {random} from "./utils.js";
-import {MAX_ANGLES, BIG_MYSTERY} from "./constant.js";
+import { random, statsLog } from "./utils.js";
+import { MAX_ANGLES, BIG_MYSTERY } from "./constant.js";
 import {
   create as mat4,
   fromRotation,
@@ -9,7 +9,7 @@ import {
   multiply,
   fromTranslation,
 } from "./lib/gl-matrix/mat4.js";
-import {fromValues as v3, transformMat4} from "./lib/gl-matrix/vec3.js";
+import { fromValues as v3, transformMat4 } from "./lib/gl-matrix/vec3.js";
 
 export class Star {
   constructor() {
@@ -146,7 +146,7 @@ export class Star {
       (Math.cos(7.0 * thisAngle) +
         Math.cos(3.0 * thisAngle) +
         Math.cos(13.0 * thisAngle)) /
-      6.0 +
+        6.0 +
       0.75;
     const thisPointInRadians = (2.0 * Math.PI * this.mystery) / BIG_MYSTERY;
 
@@ -172,5 +172,9 @@ export class Star {
     this.position[0] = v0[0];
     this.position[1] = v0[1];
     this.position[2] = v0[2];
+
+    // statsLog("star.pos.x", this.position[0]);
+    // statsLog("star.pos.y", this.position[1]);
+    // statsLog("star.pos.z", this.position[2]);
   }
 }
