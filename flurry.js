@@ -3149,6 +3149,49 @@ void main() {
 
   var perspective = perspectiveNO;
   /**
+   * Generates a orthogonal projection matrix with the given bounds.
+   * The near/far clip planes correspond to a normalized device coordinate Z range of [-1, 1],
+   * which matches WebGL/OpenGL's clip volume.
+   *
+   * @param {mat4} out mat4 frustum matrix will be written into
+   * @param {number} left Left bound of the frustum
+   * @param {number} right Right bound of the frustum
+   * @param {number} bottom Bottom bound of the frustum
+   * @param {number} top Top bound of the frustum
+   * @param {number} near Near bound of the frustum
+   * @param {number} far Far bound of the frustum
+   * @returns {mat4} out
+   */
+
+  function orthoNO(out, left, right, bottom, top, near, far) {
+    var lr = 1 / (left - right);
+    var bt = 1 / (bottom - top);
+    var nf = 1 / (near - far);
+    out[0] = -2 * lr;
+    out[1] = 0;
+    out[2] = 0;
+    out[3] = 0;
+    out[4] = 0;
+    out[5] = -2 * bt;
+    out[6] = 0;
+    out[7] = 0;
+    out[8] = 0;
+    out[9] = 0;
+    out[10] = 2 * nf;
+    out[11] = 0;
+    out[12] = (left + right) * lr;
+    out[13] = (top + bottom) * bt;
+    out[14] = (far + near) * nf;
+    out[15] = 1;
+    return out;
+  }
+  /**
+   * Alias for {@link mat4.orthoNO}
+   * @function
+   */
+
+  var ortho = orthoNO;
+  /**
    * Generates a look-at matrix with the given eye position, focal point, and up axis.
    * If you want a matrix that actually makes an object look at another object, you should use targetTo instead.
    *
@@ -4137,12 +4180,25 @@ void main() {
   smoke.init(gl, shader, texture);
 
   // dat.gui controls
-  const params = { streams: 8, displayStar: false, displaySparks: false };
+  const params = {
+    streams: 8,
+    displayStar: false,
+    displaySparks: false,
+    useOrtho: false,
+  };
 
   const gui = new GUI$1({ name: "flurry-js" });
   gui.add(params, "streams", 1, 12, 1);
   gui.add(params, "displayStar");
   gui.add(params, "displaySparks");
+  gui.add(params, "useOrtho").onChange(() => {
+    // 切换投影方式
+    if (params.useOrtho) {
+      ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
+    } else {
+      perspective(projection, 45, canvas.width / canvas.height, 0.1, 10000);
+    }
+  });
 
   // github links
   const linksFolder = gui.addFolder("Links");
@@ -4157,6 +4213,11 @@ void main() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       gl.viewport(0, 0, canvas.width, canvas.height);
+      if (params.useOrtho) {
+        ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
+      } else {
+        perspective(projection, 45, canvas.width / canvas.height, 0.1, 10000);
+      }
     },
     false
   );

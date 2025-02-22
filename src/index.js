@@ -1,7 +1,12 @@
 import * as dat from "./lib/dat.gui/dat.gui.module.js";
 import { createTexture } from "./texture.js";
 import { createShaderProgram } from "./shader.js";
-import { create as mat4, ortho, perspective, lookAt } from "./lib/gl-matrix/mat4.js";
+import {
+  create as mat4,
+  ortho,
+  perspective,
+  lookAt,
+} from "./lib/gl-matrix/mat4.js";
 import { fromValues as v3 } from "./lib/gl-matrix/vec3.js";
 import { Star } from "./star.js";
 import { Spark } from "./spark.js";
@@ -49,12 +54,25 @@ const smoke = new Smoke(star, sparks, 8);
 smoke.init(gl, shader, texture);
 
 // dat.gui controls
-const params = { streams: 8, displayStar: false, displaySparks: false };
+const params = {
+  streams: 8,
+  displayStar: false,
+  displaySparks: false,
+  useOrtho: false,
+};
 
 const gui = new dat.GUI({ name: "flurry-js" });
 gui.add(params, "streams", 1, 12, 1);
 gui.add(params, "displayStar");
 gui.add(params, "displaySparks");
+gui.add(params, "useOrtho").onChange(() => {
+  // 切换投影方式
+  if (params.useOrtho) {
+    ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
+  } else {
+    perspective(projection, 45, canvas.width / canvas.height, 0.1, 10000);
+  }
+});
 
 // github links
 const linksFolder = gui.addFolder("Links");
@@ -69,6 +87,11 @@ window.addEventListener(
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     gl.viewport(0, 0, canvas.width, canvas.height);
+    if (params.useOrtho) {
+      ortho(projection, -1000, 1000, -1000, 1000, -2000, 2000);
+    } else {
+      perspective(projection, 45, canvas.width / canvas.height, 0.1, 10000);
+    }
   },
   false
 );
