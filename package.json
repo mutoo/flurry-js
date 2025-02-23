@@ -1,12 +1,14 @@
 {
   "name": "flurry-js",
+  "private": true,
   "version": "1.0.0",
-  "main": "index.js",
-  "license": "MIT",
-  "devDependencies": {
-    "rollup": "^3.28.1"
-  },
+  "type": "module",
   "scripts": {
-    "build": "rollup src/index.js --file flurry.js --format iife"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.1.0"
   }
 }
